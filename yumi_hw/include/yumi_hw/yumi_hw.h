@@ -33,113 +33,108 @@
 
 class YumiHW : public hardware_interface::RobotHW
 {
-    public:
+  public:
+    // Hardware interfaces
+    hardware_interface::JointStateInterface state_interface_;
+    hardware_interface::PositionJointInterface position_interface_;
+    hardware_interface::VelocityJointInterface velocity_interface_;
 
-	YumiHW() 
-	{
-	    n_joints_=14;
-	}
-	virtual ~YumiHW() {}
+    // joint limits interfaces
+    joint_limits_interface::VelocityJointSaturationInterface   vj_sat_interface_;
+    joint_limits_interface::VelocityJointSoftLimitsInterface   vj_limits_interface_;
+    joint_limits_interface::PositionJointSaturationInterface   pj_sat_interface_;
+    joint_limits_interface::PositionJointSoftLimitsInterface   pj_limits_interface_;
 
-	void create(std::string name, std::string urdf_string);
+    // Before write, you can use this function to enforce limits for all values
+    void enforceLimits(ros::Duration period);
 
-	// Strings
-	std::string robot_namespace_;
+    // configuration
+    int n_joints_; // all joints of yumi
+    std::vector<std::string> joint_names_;
 
-	// Model
-	std::string urdf_string_;
-	urdf::Model urdf_model_;
+    // limits
+    std::vector<double> joint_lower_limits_;
+    std::vector<double> joint_upper_limits_;
 
-	// control strategies
-	// JOINT_POSITION -> strategy 10 -> triggered with PoitionJointInterface
-	// JOINT_VELOCITY -> strategy 15 -> triggered with VelJointInterface
-	// JOINT_EFFORT -> strategy 20 -> TODO
-	enum ControlStrategy {JOINT_POSITION = 10, JOINT_VELOCITY = 15};
-	virtual bool canSwitch(const std::list<hardware_interface::ControllerInfo> &start_list, const std::list<hardware_interface::ControllerInfo> &stop_list) const;
-	virtual void doSwitch(const std::list<hardware_interface::ControllerInfo> &start_list, const std::list<hardware_interface::ControllerInfo> &stop_list);
+    // state and commands
+    std::vector<double> joint_position_;
+    std::vector<double> joint_position_prev_;
+    std::vector<double>joint_velocity_;
+    std::vector<double>joint_effort_;
+    std::vector<double>joint_position_command_;
+    std::vector<double>joint_velocity_command_;
 
-	// This functions must be implemented depending on the outlet (Real, Gazebo, etc.)
-	virtual bool init() = 0;
-	virtual void read(ros::Time time, ros::Duration period) = 0;
-	virtual void write(ros::Time time, ros::Duration period) = 0;
+    // Transmissions in this plugin's scope
+    std::vector<transmission_interface::TransmissionInfo> transmissions_;
 
-	// get/set control method
-	void setControlStrategy( ControlStrategy strategy){current_strategy_ = strategy;};
-	ControlStrategy getControlStrategy(){ return current_strategy_;};
+    // Strings
+    std::string robot_namespace_;
 
-	// Hardware interfaces
-	hardware_interface::JointStateInterface state_interface_;
-	//hardware_interface::EffortJointInterface effort_interface_; //TODO
-	hardware_interface::PositionJointInterface position_interface_;
-	hardware_interface::VelocityJointInterface velocity_interface_;
+    // Model
+    std::string urdf_string_;
+    urdf::Model urdf_model_;
 
-	ControlStrategy current_strategy_;
+    // control strategies
+    // JOINT_POSITION -> strategy 10 -> triggered with PoitionJointInterface
+    // JOINT_VELOCITY -> strategy 15 -> triggered with VelJointInterface
+    // JOINT_EFFORT -> strategy 20 -> TODO
+    enum ControlStrategy
+    {
+      JOINT_POSITION = 10,
+      JOINT_VELOCITY = 15
+    };
+    ControlStrategy current_strategy_;
 
-	// joint limits interfaces
-	//joint_limits_interface::EffortJointSaturationInterface     ej_sat_interface_;
-	//joint_limits_interface::EffortJointSoftLimitsInterface     ej_limits_interface_;
-	joint_limits_interface::VelocityJointSaturationInterface   vj_sat_interface_;
-	joint_limits_interface::VelocityJointSoftLimitsInterface   vj_limits_interface_;
-	joint_limits_interface::PositionJointSaturationInterface   pj_sat_interface_;
-	joint_limits_interface::PositionJointSoftLimitsInterface   pj_limits_interface_;
+    YumiHW():
+      n_joints_(14)
+    {}
 
-	// Before write, you can use this function to enforce limits for all values
-	void enforceLimits(ros::Duration period);
+    virtual ~YumiHW() {}
 
-	// configuration
-	int n_joints_; // all joints of yumi
-	std::vector<std::string> joint_names_;
+    void create(std::string name, std::string urdf_string);
 
-	// limits
-	std::vector<double>
-	    joint_lower_limits_,
-	    joint_upper_limits_; 
+    virtual bool canSwitch(
+      const std::list<hardware_interface::ControllerInfo> &start_list,
+      const std::list<hardware_interface::ControllerInfo> &stop_list) const;
 
-	// state and commands
-	std::vector<double>
-	    joint_position_,
-	    joint_position_prev_,
-	    joint_velocity_,
-	    joint_effort_,
-	    joint_position_command_,
-	    joint_velocity_command_;
+    virtual void doSwitch(
+      const std::list<hardware_interface::ControllerInfo> &start_list,
+      const std::list<hardware_interface::ControllerInfo> &stop_list);
 
-	// Set all members to default values
-	void reset();
-	
-	// Transmissions in this plugin's scope
-	std::vector<transmission_interface::TransmissionInfo> transmissions_;
+    // This functions must be implemented depending on the outlet (Real, Gazebo, etc.)
+    virtual bool init() = 0;
+    virtual void read(ros::Time time, ros::Duration period) = 0;
+    virtual void write(ros::Time time, ros::Duration period) = 0;
 
-	//TODO: KDL stuff is not implemented yet
-	// KDL stuff to compute ik, gravity term, etc.
-	/*
-	KDL::Chain yumi_chain_;
-	boost::scoped_ptr<KDL::ChainDynParam> f_dyn_solver_;
-	KDL::JntArray joint_position_kdl_, gravity_effort_;
-	KDL::Vector gravity_;
-	*/
+    // get/set control method
+    void setControlStrategy(ControlStrategy strategy)
+    {
+      current_strategy_ = strategy;
+    };
+    ControlStrategy getControlStrategy()
+    {
+      return current_strategy_;
+    };
 
-    private:
+    // Set all members to default values
+    void reset();
 
-	// Get Transmissions from the URDF
-	bool parseTransmissionsFromURDF(const std::string& urdf_string);
+  private:
 
-	// Register all interfaces 
-	void registerInterfaces(const urdf::Model *const urdf_model,
-		std::vector<transmission_interface::TransmissionInfo> transmissions);
+    // Get Transmissions from the URDF
+    bool parseTransmissionsFromURDF(const std::string& urdf_string);
 
-	// Initialize all KDL members
-	// bool initKDLdescription(const urdf::Model *const urdf_model);
+    // Register all interfaces
+    void registerInterfaces(const urdf::Model *const urdf_model,
+        std::vector<transmission_interface::TransmissionInfo> transmissions);
 
-	// Helper function to register limit interfaces
-	void registerJointLimits(const std::string& joint_name,
-		const hardware_interface::JointHandle& joint_handle_position,
-		const hardware_interface::JointHandle& joint_handle_velocity,
-		const urdf::Model *const urdf_model,
-		double *const lower_limit, double *const upper_limit);
+    // Helper function to register limit interfaces
+    void registerJointLimits(const std::string& joint_name,
+        const hardware_interface::JointHandle& joint_handle_position,
+        const hardware_interface::JointHandle& joint_handle_velocity,
+        const urdf::Model *const urdf_model,
+        double *const lower_limit, double *const upper_limit);
 
 }; // class
-
-
 
 #endif

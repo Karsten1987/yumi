@@ -37,53 +37,53 @@ LOCAL VAR socketdev client_socket;
 PROC main()
 
     TPWrite "StateServer: Waiting for connection.";
-	ROS_init_socket server_socket, server_port;
+    ROS_init_socket server_socket, server_port;
     ROS_wait_for_client server_socket, client_socket;
-    
-	WHILE (TRUE) DO
-		send_joints;
-		!WaitTime update_rate;
+
+    WHILE (TRUE) DO
+    send_joints;
+    !WaitTime update_rate;
     ENDWHILE
 
 ERROR (ERR_SOCK_TIMEOUT, ERR_SOCK_CLOSED)
-	IF (ERRNO=ERR_SOCK_TIMEOUT) OR (ERRNO=ERR_SOCK_CLOSED) THEN
-        SkipWarn;  ! TBD: include this error data in the message logged below?
-        ErrWrite \W, "ROS StateServer disconnect", "Connection lost.  Waiting for new connection.";
-        ExitCycle;  ! restart program
-	ELSE
-		TRYNEXT;
-	ENDIF
-UNDO
-ENDPROC
+  IF (ERRNO=ERR_SOCK_TIMEOUT) OR (ERRNO=ERR_SOCK_CLOSED) THEN
+  SkipWarn;  ! TBD: include this error data in the message logged below?
+  ErrWrite \W, "ROS StateServer disconnect", "Connection lost.  Waiting for new connection.";
+  ExitCycle;  ! restart program
+  ELSE
+  TRYNEXT;
+  ENDIF
+  UNDO
+  ENDPROC
 
 LOCAL PROC send_joints()
-	VAR ROS_msg_joint_data message;
-    VAR ROS_msg_joint_data target;
-	! VAR jointtarget joints;
-	
-    ! get current joint position (degrees)
-	message.joints_left := CJointT(\TaskName:="T_ROB_L");
-    message.joints_right := CJointT(\TaskName:="T_ROB_R");
-    
-    ! create message
-    message.header := [ROS_MSG_TYPE_JOINT, ROS_COM_TYPE_TOPIC, ROS_REPLY_TYPE_INVALID];
-    message.sequence_id := 0;
-         
-    ! send message to client
-    ROS_send_msg_joint_data client_socket, message;
+  VAR ROS_msg_joint_data message;
+  VAR ROS_msg_joint_data target;
+  ! VAR jointtarget joints;
 
-    ! recv message from client
-    ROS_receive_msg_joint_data client_socket, target;
-    WaitTestAndSet ROS_joint_target_left_lock;
-    WaitTestAndSet ROS_joint_target_right_lock;
-    next_joint_target := target;
+  ! get current joint position (degrees)
+  message.joints_left := CJointT(\TaskName:="T_ROB_L");
+  message.joints_right := CJointT(\TaskName:="T_ROB_R");
 
-    ROS_new_joint_target_left := TRUE;
-    ROS_new_joint_target_right := TRUE;
-    ROS_joint_target_right_lock := FALSE; !release lock
-    ROS_joint_target_left_lock := FALSE; !release lock
-ERROR
-    RAISE;  ! raise errors to calling code
+  ! create message
+  message.header := [ROS_MSG_TYPE_JOINT, ROS_COM_TYPE_TOPIC, ROS_REPLY_TYPE_INVALID];
+  message.sequence_id := 0;
+
+  ! send message to client
+  ROS_send_msg_joint_data client_socket, message;
+
+  ! recv message from client
+  ROS_receive_msg_joint_data client_socket, target;
+  WaitTestAndSet ROS_joint_target_left_lock;
+  WaitTestAndSet ROS_joint_target_right_lock;
+  next_joint_target := target;
+
+  ROS_new_joint_target_left := TRUE;
+  ROS_new_joint_target_right := TRUE;
+  ROS_joint_target_right_lock := FALSE; !release lock
+  ROS_joint_target_left_lock := FALSE; !release lock
+  ERROR
+  RAISE;  ! raise errors to calling code
 ENDPROC
 
 

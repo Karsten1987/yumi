@@ -72,7 +72,6 @@ int main( int argc, char** argv )
   int port;
   std::string hintToRemoteHost;
   std::string name;
-  //yumi_nh.param("port", port, 49939);
   yumi_nh.param("ip", hintToRemoteHost, std::string("192.168.125.1") );
   yumi_nh.param("name", name, std::string("yumi"));
 
@@ -82,7 +81,7 @@ int main( int argc, char** argv )
   YumiHWRapid yumi_robot;
   yumi_robot.create(name, urdf_string);
   yumi_robot.setup(hintToRemoteHost);
-  
+
   if(!yumi_robot.init())
   {
     ROS_FATAL_NAMED("yumi_hw","Could not initialize robot real interface");
@@ -103,32 +102,18 @@ int main( int argc, char** argv )
   // run as fast as possible
   while( !g_quit )
   {
-    // get the time / period
-    //if (!clock_gettime(CLOCK_MONOTONIC, &ts))
-    //{
-      now = ros::Time::now();	
-      //now.sec = ts.tv_sec;
-      //now.nsec = ts.tv_nsec;
-      period = now - last;
-      last = now;
-    //} 
-    //else
-    //{
-    //  ROS_FATAL("Failed to poll realtime clock!");
-    //  break;
-    //}
+    now = ros::Time::now();	
+    period = now - last;
+    last = now;
 
     // read the state from the lwr
     yumi_robot.read(now, period);
-    
+
     // update the controllers
     manager.update(now, period);
 
     // write the command to the lwr
     yumi_robot.write(now, period);
-    
-    //std::cout<<"Period is "<<period.toSec()<<std::endl;
-    //ros::Duration(sampling_time).sleep();
   }
 
   std::cerr<<"Stopping spinner..."<<std::endl;
